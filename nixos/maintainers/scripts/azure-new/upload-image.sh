@@ -210,6 +210,7 @@ then
     --resource-group "${resource_group}"  \
     --name "${img_name}"         \
     --source "$(show_id "disk")" \
+    --hyper-v-generation V2      \
     --os-type "linux" >/dev/null
 fi
 

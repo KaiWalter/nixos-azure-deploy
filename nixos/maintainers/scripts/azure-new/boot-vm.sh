@@ -174,6 +174,16 @@ identity_id="$(
     --output tsv --query "[id]"
   )"
 
+storage_name=`echo $vm_name$RANDOM | tr -cd '[a-z0-9]'`
+
+az storage account create -n $storage_name \
+  --resource-group "${resource_group}" \
+  --sku Standard_LRS \
+  --kind StorageV2 \
+  --allow-blob-public-access false
+
+img_id=/subscriptions/e63a4cd9-6e96-4bbd-92aa-eab7d3e99261/resourceGroups/kw-nixos/providers/Microsoft.Compute/galleries/kwimages/images/kw-nixos-2/versions/2.0.0
+
 # boot vm
 az vm create                           \
   --name "${vm_name}"                  \
@@ -184,6 +194,7 @@ az vm create                           \
   --image "${img_id}"                  \
   --admin-username "${USER}"           \
   --location "${location_d}"           \
+  --boot-diagnostics-storage $storage_name \
   --storage-sku "Premium_LRS"          \
   --generate-ssh-keys
   # This only works if `ssh-agent` is running

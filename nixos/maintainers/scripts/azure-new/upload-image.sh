@@ -140,9 +140,15 @@ fi
 # DEFAULTS                                         #
 ####################################################
 
-image_nix_d="${image_nix:-"./examples/basic/image.nix"}"
-location_d="${location:-"westus2"}"
+image_nix_d="${image_nix:-"./kw-nixos/image.nix"}"
+location_d="${location:-"uksouth"}"
 boot_opts_d="${boot_opts:-"none"}"
+gallery_name="kwimages"
+hyperv_gen="V1"
+img_version="1.0.0"
+img_publisher="kws"
+img_offer="nixos"
+img_sku=$hyperv_gen
 
 ####################################################
 # PUT IMAGE INTO AZURE CLOUD                       #
@@ -162,6 +168,29 @@ then
     --name "${resource_group}" \
     --location "${location_d}"
 fi
+
+
+if ! az sig show --resource-group "${resource_group}" --gallery-name "${gallery_name}" &>/dev/null
+then
+   az sig create \
+     --resource-group "${resource_group}" \
+     --gallery-name "${gallery_name}"
+fi
+
+if az sig image-definition show --resource-group "${resource_group}" --gallery-name "${gallery_name}" -i "${img_name}" &>/dev/null
+then
+    az sig image-definition delete --resource-group "${resource_group}" --gallery-name "${gallery_name}" -i "${img_name}"
+fi
+
+az sig image-definition create \
+  --resource-group "${resource_group}" \
+  --gallery-name "${gallery_name}" \
+  -i "${img_name}" \
+  --os-type Linux \
+  --hyper-v-generation "${hyperv_gen}" \
+  --publisher "${img_publisher}" \
+  --offer "${img_offer}" \
+  --sku "${img_sku}"
 
 # NOTE: The  disk   access  token   song/dance  is
 #       tedious  but allows  us  to upload  direct
@@ -205,14 +234,20 @@ fi
 
 if ! show_id "image" &>/dev/null
 then
-
   az image create                \
     --resource-group "${resource_group}"  \
     --name "${img_name}"         \
     --source "$(show_id "disk")" \
-    --hyper-v-generation V2      \
-    --os-type "linux" >/dev/null
+    --hyper-v-generation "${hyperv_gen}"      \
+    --os-type "linux"
 fi
+
+az sig image-version create \
+  --resource-group "${resource_group}" \
+  --gallery-name "${gallery_name}" \
+  --gallery-image-definition "${img_name}" \
+  --gallery-image-version "${img_version}" \
+  --managed-image "$(show_id "image")"
 
 if [ "${boot_opts_d}" != "none" ]
 then

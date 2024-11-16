@@ -88,6 +88,11 @@ usage() {
   echo ''
   echo '                    + if  resource group  is omitted,  the one'
   echo '                      for `./upload-image.sh` is used'
+  echo ''
+  echo '-v --version        Hyper-V-Generation V1 or V2'
+  echo ''
+  echo '-r --gallery-name   Image Gallery Name'
+  echo ''
 }
 
 ####################################################
@@ -111,6 +116,12 @@ while [ $# -gt 0 ]; do
       ;;
     -b|--boot-sh-opts)
       boot_opts="$2"
+      ;;
+    -v|--version)
+      hyperv_gen="$2"
+      ;;
+    -r|--gallery-name)
+      gallery_name="$2"
       ;;
     -h|--help)
       usage
@@ -143,8 +154,8 @@ fi
 image_nix_d="${image_nix:-"./kw-nixos/image.nix"}"
 location_d="${location:-"uksouth"}"
 boot_opts_d="${boot_opts:-"none"}"
-gallery_name="kwimages"
-hyperv_gen="V1"
+gallery_name="${gallery_name:-"kwimages"}"
+hyperv_gen="${hyperv_gen:-"V1"}"
 img_version="1.0.0"
 img_publisher="kws"
 img_offer="nixos"

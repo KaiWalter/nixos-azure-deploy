@@ -51,6 +51,21 @@ usage() {
   echo '-l --location       Values from `az account list-locations`.'
   echo '                    Default value: "westus2".'
   echo ''
+  echo '--hyper-g-gen       Hyper-V-Generation V1 or V2. Will be used'
+  echo '                    for image SKU.'
+  echo '                    Default value: "V1".'
+  echo ''
+  echo '-v --version        Image Version.'
+  echo '                    Default value: "1.0.0".'
+  echo ''
+  echo '-p --publisher      Image Publisher.'
+  echo '                    Default value: "kws".'
+  echo ''
+  echo '-o --offer          Image Offer.'
+  echo '                    Default value: "nixos".'
+  echo ''
+  echo '-r --gallery-name   Image Gallery Name'
+  echo ''
   echo 'NOTE: Brand new SSH  keypair is going to  be generated. To'
   echo '      provide  your own,  edit  the very  last command  in'
   echo '      `./boot-vm.sh`.'
@@ -71,16 +86,17 @@ while [ $# -gt 0 ]; do
       resource_group="$2"
       ;;
     -i|--image)
-      case "$2" in
-        /*)
-          img_id="$2"
-          ;;
-        *)  # image name
-          img_id="$(az image list             \
-            --query "[?name=='"$2"'].{ID:id}" \
-            --output tsv
-          )"
-       esac
+      img_name="$2"
+      # case "$2" in
+      #   /*)
+      #     img_id="$2"
+      #     ;;
+      #   *)  # image name
+      #     img_id="$(az image list             \
+      #       --query "[?name=='"$2"'].{ID:id}" \
+      #       --output tsv
+      #     )"
+      #  esac
       ;;
     -n|--vm-name)
       vm_name="$2"
@@ -90,6 +106,21 @@ while [ $# -gt 0 ]; do
       ;;
     -d|--os-disk-size-gb)
       os_size="$2"
+      ;;
+    --hyper-g-gen)
+      hyper_v_gen="$2"
+      ;;
+    -v|--version)
+      img_version="$2"
+      ;;
+    -p|--publisher)
+      img_publisher="$2"
+      ;;
+    -o|--offer)
+      img_offer="$2"
+      ;;
+    -r|--gallery-name)
+      gallery_name="$2"
       ;;
     *)
       printf "***************************\n"
@@ -102,7 +133,7 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [ -z "${img_id}" ] || [ -z "${resource_group}" ] || [ -z "${vm_name}" ]
+if [ -z "${img_name}" ] || [ -z "${resource_group}" ] || [ -z "${vm_name}" ]
 then
   printf "************************************\n"
   printf "* Error: Missing required argument *\n"
@@ -116,19 +147,49 @@ fi
 ####################################################
 
 location_d="${location:-"westus2"}"
-os_size_d="${vm_size:-"42"}"
-vm_size_d="${os_size:-"Standard_DS1_v2"}"
+os_size_d="${os_size:-"42"}"
+vm_size_d="${vm_size:-"Standard_DS1_v2"}"
+gallery_name="${gallery_name:-"kwimages"}"
+hyper_v_gen="${hyper_v_gen:-"V1"}"
+img_version="${img_version:-"1.0.0"}"
+img_publisher="${img_publisher:-"kws"}"
+img_offer="${img_offer:-"nixos"}"
+img_sku=$hyper_v_gen
+
+case "${img_name}" in
+  /*)
+    img_id="${img_name}"
+    ;;
+  *)  # image name
+    img_id="$(az sig image-version list \
+      -i "${img_name}"                  \
+      -r "${gallery_name}"              \
+      -g "${resource_group}"            \
+      --query "[?name=='"${img_version}"'].id" \
+      --output tsv
+    )"
+esac
+
+img_type="$(az resource show --id "${img_id}" --query type -o tsv)"
+
+if [ "${img_type}" != "Microsoft.Compute/galleries/images/versions" ]
+then
+  printf "************************************\n"
+  printf "* Error: Not a Gallery Image       *\n"
+  printf "************************************\n"
+  exit 1
+fi
 
 # https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
 set -euxo pipefail
 
-# Make resource group exists
-if ! az group show --resource-group "${resource_group}" &>/dev/null
-then
-  az group create              \
-    --name "${resource_group}" \
-    --location "${location_d}"
-fi
+# # Make resource group exists
+# if ! az group show --resource-group "${resource_group}" &>/dev/null
+# then
+#   az group create              \
+#     --name "${resource_group}" \
+#     --location "${location_d}"
+# fi
 
 # (optional) identity
 if ! az identity show --name "${resource_group}-identity" --resource-group "${resource_group}" &>/dev/stderr
@@ -189,6 +250,8 @@ az vm create                           \
   --assign-identity "${identity_id}"   \
   --size "${vm_size_d}"                \
   --os-disk-size-gb "${os_size_d}"     \
+  --public-ip-sku Standard             \
+  --public-ip-address-dns-name "${vm_name}" \
   --image "${img_id}"                  \
   --admin-username "${USER}"           \
   --location "${location_d}"           \

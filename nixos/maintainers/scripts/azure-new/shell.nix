@@ -1,6 +1,6 @@
 {pkgs ? import ../../../../default.nix {} }:
 
-pkgs.mkShell {
+pkgs.stdenv.mkDerivation {
   buildInputs = with pkgs; [
     azure-cli
     bash
@@ -12,6 +12,10 @@ pkgs.mkShell {
     jq
   ];
 
-  AZURE_CONFIG_DIR="/tmp/azure-cli/.azure";
-  AZURE_NEW_PKGS_PATH=pkgs.path;
+  name = "azure-nixos";
+
+  shellHook = ''
+    export AZURE_CONFIG_DIR="$HOME/.azure" 
+    export AZURE_NEW_PKGS_PATH=pkgs.path;
+  '';
 }

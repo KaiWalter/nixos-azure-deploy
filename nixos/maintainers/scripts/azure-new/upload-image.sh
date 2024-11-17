@@ -72,7 +72,7 @@ usage() {
   echo '                    "./examples/basic/image.nix".'
   echo ''
   echo '-l --location       Values from `az account list-locations`.'
-  echo '                    Default value: "westus2".'
+  echo '                    Default value: "uksouth".'
   echo ''
   echo '-b --boot-sh-opts   Run  `./boot-vm.sh`  once   the  image  is'
   echo '                    created and  uploaded; takes  arguments in'
@@ -89,7 +89,18 @@ usage() {
   echo '                    + if  resource group  is omitted,  the one'
   echo '                      for `./upload-image.sh` is used'
   echo ''
-  echo '-v --version        Hyper-V-Generation V1 or V2'
+  echo '--hyper-g-gen       Hyper-V-Generation V1 or V2. Will be used'
+  echo '                    for image SKU.'
+  echo '                    Default value: "V1".'
+  echo ''
+  echo '-v --version        Image Version.'
+  echo '                    Default value: "1.0.0".'
+  echo ''
+  echo '-p --publisher      Image Publisher.'
+  echo '                    Default value: "kws".'
+  echo ''
+  echo '-o --offer          Image Offer.'
+  echo '                    Default value: "nixos".'
   echo ''
   echo '-r --gallery-name   Image Gallery Name'
   echo ''
@@ -117,8 +128,17 @@ while [ $# -gt 0 ]; do
     -b|--boot-sh-opts)
       boot_opts="$2"
       ;;
+    --hyper-g-gen)
+      hyper_v_gen="$2"
+      ;;
     -v|--version)
-      hyperv_gen="$2"
+      img_version="$2"
+      ;;
+    -p|--publisher)
+      img_publisher="$2"
+      ;;
+    -o|--offer)
+      img_offer="$2"
       ;;
     -r|--gallery-name)
       gallery_name="$2"
@@ -155,11 +175,19 @@ image_nix_d="${image_nix:-"./kw-nixos/image.nix"}"
 location_d="${location:-"uksouth"}"
 boot_opts_d="${boot_opts:-"none"}"
 gallery_name="${gallery_name:-"kwimages"}"
-hyperv_gen="${hyperv_gen:-"V1"}"
-img_version="1.0.0"
-img_publisher="kws"
-img_offer="nixos"
-img_sku=$hyperv_gen
+hyper_v_gen="${hyper_v_gen:-"V1"}"
+img_version="${img_version:-"1.0.0"}"
+img_publisher="${img_publisher:-"kws"}"
+img_offer="${img_offer:-"nixos"}"
+img_sku=$hyper_v_gen
+
+if [[ "$hyper_v_gen" != "V1" && "$hyper_v_gen" != "V2" ]]; then
+  printf "*************************************\n"
+  printf "* Error: invalid Hyper-V-Generation *\n"
+  printf "*************************************\n"
+  usage
+  exit 1
+fi
 
 ####################################################
 # PUT IMAGE INTO AZURE CLOUD                       #
@@ -188,20 +216,19 @@ then
      --gallery-name "${gallery_name}"
 fi
 
-if az sig image-definition show --resource-group "${resource_group}" --gallery-name "${gallery_name}" -i "${img_name}" &>/dev/null
+if ! az sig image-definition show --resource-group "${resource_group}" --gallery-name "${gallery_name}" -i "${img_name}" &>/dev/null
 then
-    az sig image-definition delete --resource-group "${resource_group}" --gallery-name "${gallery_name}" -i "${img_name}"
+  az sig image-definition create \
+    --resource-group "${resource_group}" \
+    --gallery-name "${gallery_name}" \
+    -i "${img_name}" \
+    --os-type Linux \
+    --hyper-v-generation "${hyper_v_gen}" \
+    --publisher "${img_publisher}" \
+    --offer "${img_offer}" \
+    --sku "${img_sku}"
 fi
 
-az sig image-definition create \
-  --resource-group "${resource_group}" \
-  --gallery-name "${gallery_name}" \
-  -i "${img_name}" \
-  --os-type Linux \
-  --hyper-v-generation "${hyperv_gen}" \
-  --publisher "${img_publisher}" \
-  --offer "${img_offer}" \
-  --sku "${img_sku}"
 
 # NOTE: The  disk   access  token   song/dance  is
 #       tedious  but allows  us  to upload  direct
@@ -249,7 +276,7 @@ then
     --resource-group "${resource_group}"  \
     --name "${img_name}"         \
     --source "$(show_id "disk")" \
-    --hyper-v-generation "${hyperv_gen}"      \
+    --hyper-v-generation "${hyper_v_gen}"      \
     --os-type "linux"
 fi
 

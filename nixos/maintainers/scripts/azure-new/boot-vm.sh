@@ -49,7 +49,7 @@ usage() {
   echo '                    Default value: "42"'
   echo ''
   echo '-l --location       Values from `az account list-locations`.'
-  echo '                    Default value: "westus2".'
+  echo '                    Default value: "swedencentral".'
   echo ''
   echo '--hyper-g-gen       Hyper-V-Generation V1 or V2. Will be used'
   echo '                    for image SKU.'
@@ -146,7 +146,7 @@ fi
 # DEFAULTS                                         #
 ####################################################
 
-location_d="${location:-"westus2"}"
+location_d="${location:-"swedencentral"}"
 os_size_d="${os_size:-"42"}"
 vm_size_d="${vm_size:-"Standard_DS1_v2"}"
 gallery_name="${gallery_name:-"kwimages"}"

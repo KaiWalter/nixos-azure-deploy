@@ -72,7 +72,7 @@ usage() {
   echo '                    "./examples/basic/image.nix".'
   echo ''
   echo '-l --location       Values from `az account list-locations`.'
-  echo '                    Default value: "uksouth".'
+  echo '                    Default value: "swedencentral".'
   echo ''
   echo '-b --boot-sh-opts   Run  `./boot-vm.sh`  once   the  image  is'
   echo '                    created and  uploaded; takes  arguments in'
@@ -172,7 +172,7 @@ fi
 ####################################################
 
 image_nix_d="${image_nix:-"./kw-nixos/image.nix"}"
-location_d="${location:-"uksouth"}"
+location_d="${location:-"swedencentral"}"
 boot_opts_d="${boot_opts:-"none"}"
 gallery_name="${gallery_name:-"kwimages"}"
 hyper_v_gen="${hyper_v_gen:-"V1"}"
